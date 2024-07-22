@@ -23,35 +23,10 @@
  */
 package org.jenkinsci.plugins.oic;
 
-import com.google.api.client.auth.oauth2.AuthorizationCodeFlow;
-import com.google.api.client.auth.oauth2.AuthorizationCodeTokenRequest;
-import com.google.api.client.auth.oauth2.BearerToken;
-import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
-import com.google.api.client.auth.oauth2.Credential.AccessMethod;
-import com.google.api.client.auth.oauth2.RefreshTokenRequest;
-import com.google.api.client.auth.oauth2.TokenErrorResponse;
-import com.google.api.client.auth.oauth2.TokenResponseException;
-import com.google.api.client.auth.openidconnect.HttpTransportFactory;
-import com.google.api.client.auth.openidconnect.IdToken;
-import com.google.api.client.http.BasicAuthentication;
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpExecuteInterceptor;
-import com.google.api.client.http.HttpHeaders;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.HttpResponseException;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.json.GenericJson;
-import com.google.api.client.json.JsonObjectParser;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.json.webtoken.JsonWebSignature;
-import com.google.api.client.util.ArrayMap;
-import com.google.api.client.util.Data;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.google.gson.JsonParseException;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
+
 import edu.umd.cs.findbugs.annotations.CheckForNull;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -117,6 +92,8 @@ import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 import org.kohsuke.stapler.WebApp;
 import org.kohsuke.stapler.interceptor.RequirePOST;
+import org.pac4j.oidc.client.OidcClient;
+import org.pac4j.oidc.config.OidcConfiguration;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -236,8 +213,6 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
      */
     private transient OicJsonWebTokenVerifier jwtVerifier;
 
-    private transient HttpTransport httpTransport = null;
-
     /** Random generator needed for robust random wait
      */
     private static final Random RANDOM = new Random();
@@ -282,7 +257,6 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
             String automanualconfigure)
             throws IOException {
         this.disableSslVerification = Util.fixNull(disableSslVerification, Boolean.FALSE);
-        this.httpTransport = constructHttpTransport(this.disableSslVerification);
 
         this.clientId = clientId;
         this.clientSecret = clientSecret != null && !clientSecret.toLowerCase().equals(NO_SECRET)
@@ -341,7 +315,6 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
         // Needed in DataBoundSetter
         this.disableSslVerification = Util.fixNull(disableSslVerification, Boolean.FALSE);
         this.useRefreshTokens = Util.fixNull(useRefreshTokens, Boolean.FALSE);
-        this.httpTransport = constructHttpTransport(this.disableSslVerification);
         this.clientId = clientId;
         this.clientSecret = clientSecret != null && !clientSecret.toLowerCase().equals(NO_SECRET)
                 ? Secret.fromString(clientSecret)
@@ -360,9 +333,6 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
     }
 
     protected Object readResolve() {
-        if (httpTransport == null) {
-            httpTransport = constructHttpTransport(isDisableSslVerification());
-        }
         if (!Strings.isNullOrEmpty(endSessionUrl)) {
             try {
                 Field field = getClass().getDeclaredField("endSessionEndpoint");
@@ -391,21 +361,6 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
         // ensure escapeHatchSecret is encrypted
         this.setEscapeHatchSecret(this.escapeHatchSecret);
         return this;
-    }
-
-    private static HttpTransport constructHttpTransport(boolean disableSslVerification) {
-        NetHttpTransport.Builder builder = new NetHttpTransport.Builder();
-        builder.setConnectionFactory(new JenkinsAwareConnectionFactory());
-
-        if (disableSslVerification) {
-            try {
-                builder.doNotValidateCertificate();
-            } catch (GeneralSecurityException ex) {
-                // we do not handle this exception...
-            }
-        }
-
-        return builder.build();
     }
 
     public String getClientId() {
@@ -564,17 +519,15 @@ public class OicSecurityRealm extends SecurityRealm implements Serializable {
 
         // Get the well-known configuration from the specified URL
         try {
-            URL url = new URL(wellKnownOpenIDConfigurationUrl);
-            HttpRequest request = httpTransport.createRequestFactory().buildGetRequest(new GenericUrl(url));
+            // TODO we can (?)cache the config.
+            OidcConfiguration configuration = new OidcConfiguration();
+            configuration.setClientId(clientId);
+            configuration.setSecret(clientSecret.getPlainText());
+            configuration.setDiscoveryURI(wellKnownOpenIDConfigurationUrl);
+            
+            OIDCProviderMetadata providerMetadata = configuration.findProviderMetadata();
 
-            com.google.api.client.http.HttpResponse response = request.execute();
-            WellKnownOpenIDConfigurationResponse config = GsonFactory.getDefaultInstance()
-                    .fromInputStream(
-                            response.getContent(),
-                            Charset.defaultCharset(),
-                            WellKnownOpenIDConfigurationResponse.class);
-
-            this.authorizationServerUrl = Util.fixNull(config.getAuthorizationEndpoint(), this.authorizationServerUrl);
+            this.authorizationServerUrl = Util.fixNull(providerMetadata.getAuthorizationEndpointURI(), this.authorizationServerUrl);
             this.tokenServerUrl = Util.fixNull(config.getTokenEndpoint(), this.tokenServerUrl);
             this.jwksServerUrl = Util.fixNull(config.getJwksUri(), this.jwksServerUrl);
             this.tokenAuthMethod = Util.fixNull(config.getPreferredTokenAuthMethod(), this.tokenAuthMethod);
