@@ -119,11 +119,13 @@ public class ConfigurationAsCodeTest {
     @Rule(order = 0)
     public final WellKnownMockRule wellKnownMockRule = new WellKnownMockRule(
             "MOCK_PORT",
-            "{\"authorization_endpoint\": \"http://localhost:%1$d/authorize\","
+            "{\"issuer\": \"http://localhost:%1$d/\","
+                    + "\"authorization_endpoint\": \"http://localhost:%1$d/authorize\","
                     + "\"token_endpoint\":\"http://localhost:%1$d/token\","
                     + "\"userinfo_endpoint\":\"http://localhost:%1$d/user\","
                     + "\"jwks_uri\":\"http://localhost:%1$d/jwks\","
-                    + "\"scopes_supported\": null,"
+                    + "\"scopes_supported\": [\"openid\",\"email\"],"
+                    + "\"subject_types_supported\": [\"public\"],"
                     + "\"end_session_endpoint\":\"http://localhost:%1$d/logout\"}");
 
     @Test
@@ -133,7 +135,7 @@ public class ConfigurationAsCodeTest {
 
         assertTrue(realm instanceof OicSecurityRealm);
         OicSecurityRealm oicSecurityRealm = (OicSecurityRealm) realm;
-
+        oicSecurityRealm.loadWellKnownOpenIDConfigurationUrl();
         String urlBase = String.format("http://localhost:%d", wellKnownMockRule.port());
 
         assertEquals(urlBase + "/well.known", oicSecurityRealm.getWellKnownOpenIDConfigurationUrl());

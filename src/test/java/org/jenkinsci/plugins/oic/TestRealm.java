@@ -5,9 +5,6 @@ import hudson.model.Descriptor;
 import hudson.security.SecurityRealm;
 import io.burt.jmespath.Expression;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import org.kohsuke.stapler.HttpResponse;
-import org.kohsuke.stapler.StaplerRequest;
 
 public class TestRealm extends OicSecurityRealm {
 
@@ -17,6 +14,7 @@ public class TestRealm extends OicSecurityRealm {
     public static final String GROUPS_FIELD = "groups";
     public static final String MANUAL_CONFIG_FIELD = "manual";
     public static final String AUTO_CONFIG_FIELD = "auto";
+    public static final String ISSUER = "https://localhost/";
 
     public static class Builder {
         public String clientId = CLIENT_ID;
@@ -43,6 +41,7 @@ public class TestRealm extends OicSecurityRealm {
         public String escapeHatchSecret = null;
         public String escapeHatchGroup = null;
         public String automanualconfigure = MANUAL_CONFIG_FIELD;
+        public String issuerUri = ISSUER;
 
         public Builder(WireMockRule wireMockRule) throws IOException {
             this("http://localhost:" + wireMockRule.port() + "/");
@@ -105,6 +104,11 @@ public class TestRealm extends OicSecurityRealm {
             return this;
         }
 
+        public Builder WithIssuerUri(String issuerUri) {
+            this.issuerUri = issuerUri;
+            return this;
+        }
+
         public Builder WithEscapeHatch(
                 boolean escapeHatchEnabled,
                 String escapeHatchUsername,
@@ -148,7 +152,8 @@ public class TestRealm extends OicSecurityRealm {
                 builder.escapeHatchUsername,
                 builder.escapeHatchSecret,
                 builder.escapeHatchGroup,
-                builder.automanualconfigure);
+                builder.automanualconfigure,
+                builder.issuerUri);
     }
 
     public TestRealm(WireMockRule wireMockRule, String userInfoServerUrl, String emailFieldName, String groupsFieldName)
@@ -205,23 +210,6 @@ public class TestRealm extends OicSecurityRealm {
     @Override
     public Descriptor<SecurityRealm> getDescriptor() {
         return new DescriptorImpl();
-    }
-
-    @Override
-    public HttpResponse doFinishLogin(StaplerRequest request) throws IOException {
-        try {
-            Field stateField = OicSession.class.getDeclaredField("state");
-            stateField.setAccessible(true);
-            stateField.set(OicSession.getCurrent(), "state");
-            if (!isNonceDisabled()) {
-                Field nonceField = OicSession.class.getDeclaredField("nonce");
-                nonceField.setAccessible(true);
-                nonceField.set(OicSession.getCurrent(), "nonce");
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("can't fudge state", e);
-        }
-        return super.doFinishLogin(request);
     }
 
     public String getStringFieldFromJMESPath(Object object, String jmespathField) {

@@ -45,6 +45,13 @@
       <f:entry title="${%JwksServerUrl}" field="jwksServerUrl">
         <f:textbox/>
       </f:entry>
+      <f:entry title="${%TokenIsuerUrl}" field="issuerUri">
+        <f:textbox/>
+      </f:entry>
+      <f:entry title="${%Subject Identifier Type}" field="subjectType">
+        <f:textbox/>
+      </f:entry>
+
       <div id="endSessionConfig">
         <f:entry title="${%EndSessionUrl}" field="endSessionEndpoint">
           <f:textbox/>
