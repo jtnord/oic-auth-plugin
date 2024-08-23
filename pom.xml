@@ -95,9 +95,9 @@
       <version>448.v5b_97805e3767</version>
     </dependency>
     <dependency>
-      <groupId>com.github.tomakehurst</groupId>
+      <groupId>org.wiremock</groupId>
       <artifactId>wiremock-standalone</artifactId>
-      <version>2.27.2</version>
+      <version>3.9.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>

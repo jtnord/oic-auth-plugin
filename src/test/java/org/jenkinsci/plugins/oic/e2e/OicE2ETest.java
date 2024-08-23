@@ -40,17 +40,14 @@ public class OicE2ETest {
             // Add groups
             GroupRepresentation devs = new GroupRepresentation();
             devs.setName("devs");
+
             GroupRepresentation sales = new GroupRepresentation();
             sales.setName("sales");
+
             GroupRepresentation employees = new GroupRepresentation();
             employees.setName("employees");
             employees.setSubGroups(Arrays.asList(devs, sales));
-            testRealm.setGroups(Arrays.asList(employees));
-
-            RealmResource theNew = keycloakAdmin.realm(REALM);
-            try (Response r = theNew.groups().add(employees)) {
-                assertThat(r.getStatus(), either(is(200)).or(is(201)));
-            }
+            keycloakAdmin.realm(REALM).groups().add(employees);
 
             UserRepresentation bob = new UserRepresentation();
             bob.setEmail("bob@acme.org");
@@ -58,34 +55,21 @@ public class OicE2ETest {
             bob.setGroups(Arrays.asList("/employees", "/employees/devs"));
             bob.setEmailVerified(true);
             bob.setEnabled(true);
+            keycloakAdmin.realm(REALM).users().create(bob);
+
             UserRepresentation john = new UserRepresentation();
             john.setEmail("john@acme.org");
             john.setUsername("john");
             john.setGroups(Arrays.asList("/employees", "/employees/sales"));
             john.setEmailVerified(true);
             john.setEnabled(true);
-            testRealm.setUsers(Arrays.asList(bob, john));
-
-            theNew = keycloakAdmin.realm(REALM);
-            try (Response r = theNew.users().create(bob)) {
-                System.out.println(r.getStatusInfo().getReasonPhrase());
-                assertThat(r.getStatus(), either(is(200)).or(is(201)));
-            }
-            try (Response r = theNew.users().create(john)) {
-                assertThat(r.getStatus(), either(is(200)).or(is(201)));
-            }
-
-            // Tried as well:
-            //testRealm.setGroups(Arrays.asList(employees));
-            //testRealm.setUsers(Arrays.asList(bob, john));
-            //keycloakAdmin.realms().create(testRealm);
+            keycloakAdmin.realm(REALM).users().create(john);
 
             // Assert that the realm is properly created
-            RealmRepresentation created = keycloakAdmin.realm(REALM).toRepresentation();
-            assertNotNull("test realm is created", created);
-            assertThat("groups are created", created.getGroups().stream().map(GroupRepresentation::getName).collect(Collectors.toList()),
+            RealmResource realm = keycloakAdmin.realm(REALM);
+            assertThat("groups are created", realm.groups().groups().stream().map(GroupRepresentation::getName).collect(Collectors.toList()),
                        containsInAnyOrder("employees", "devs", "sales"));
-            assertThat("users are created", created.getUsers().stream().map(UserRepresentation::getUsername).collect(Collectors.toList()),
+            assertThat("users are created", realm.users().list().stream().map(UserRepresentation::getUsername).collect(Collectors.toList()),
                        containsInAnyOrder("bob", "john"));
         }
     }
