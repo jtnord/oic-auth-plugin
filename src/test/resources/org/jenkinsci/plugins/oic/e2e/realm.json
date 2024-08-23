@@ -1,0 +1,34 @@
+{
+  "id": "test-realm",
+  "realm": "test-realm",
+  "enabled": true,
+  "groups" : [ {
+    "name" : "employees",
+    "path" : "/employees",
+    "attributes" : {
+      "tenant" : [ "true" ]
+    },
+    "subGroups" : [ {
+      "name" : "devs",
+      "path" : "/employees/devs"
+    }, {
+      "name" : "sales",
+      "path" : "/employees/sales"
+    } ]
+  } ],
+  "users" : [ {
+    "username" : "bob@acme.org",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "email" : "bob@acme.org",
+    "groups" : [ "/employees", "/employees/devs" ]
+  }, {
+    "username" : "john@acme.org",
+    "enabled" : true,
+    "totp" : false,
+    "emailVerified" : true,
+    "email" : "john@acme.org",
+    "groups" : [ "/employees", "/employees/sales" ]
+  } ]
+}
