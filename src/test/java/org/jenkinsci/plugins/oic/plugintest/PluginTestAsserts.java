@@ -98,9 +98,6 @@ public class PluginTestAsserts {
                 "Avatar url should be the " + DEFAULT_AVATAR + " fallback");
     }
 
-
-
-
     public static void assertTestUserIsMemberOfGroups(User user, String... testUserGroups) {
         for (String group : testUserGroups) {
             assertTrue(user.getAuthorities().contains(group), "User should be part of group " + group);

@@ -1,5 +1,16 @@
 package org.jenkinsci.plugins.oic;
 
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertAnonymous;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertNoAvatar;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertTestAvatar;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertTestUser;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestHelper.browseLoginPage;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestHelper.configureWellKnown;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockAuthorizationRedirectsToFinishLogin;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockTokenReturnsIdTokenWithoutValues;
+import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockUserInfoWithAvatarUrl;
+
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import hudson.model.User;
 import jenkins.model.Jenkins;
@@ -11,17 +22,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
-
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertAnonymous;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertNoAvatar;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertTestAvatar;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestAsserts.assertTestUser;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestHelper.browseLoginPage;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestHelper.configureWellKnown;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockAuthorizationRedirectsToFinishLogin;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockTokenReturnsIdTokenWithoutValues;
-import static org.jenkinsci.plugins.oic.plugintest.PluginTestMocks.mockUserInfoWithAvatarUrl;
 
 /**
  * Tests the admin selectable avatar strategies ({@link AvatarHandler}).
@@ -69,7 +69,6 @@ class AvatarTest {
         user = relogin(new NoAvatarHandler());
         assertNoAvatar(user);
     }
-
 
     /**
      * Stubs the well known / authorization / token / userinfo endpoints; the {@code picture} claim
@@ -121,5 +120,4 @@ class AvatarTest {
         browseLoginPage(webClient, jenkins);
         return assertTestUser(webClient);
     }
-
 }
